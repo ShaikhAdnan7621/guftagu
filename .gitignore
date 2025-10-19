@@ -13,7 +13,7 @@
 # testing
 /coverage
 
-# next.js
+# next.jsz
 /.next/
 /out/
 
@@ -25,14 +25,14 @@
 *.pem
 
 # debug
-npm-debug.log*
+npm-debug.log*w
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
 # env files (can opt-in for committing if needed)
 .env*
-
+.env
 # vercel
 .vercel
 
