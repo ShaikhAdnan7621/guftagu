@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { Copy, UserPlus, RefreshCw, Clock } from 'lucide-react';
+import { Copy, UserPlus, RefreshCw, Clock, X, Key, User } from 'lucide-react';
 
 export default function KeyModal({ user, isOpen, onClose }) {
   const [inputKey, setInputKey] = useState('');
+  const [copied, setCopied] = useState(false);
 
   const sendRequest = async () => {
     if (!inputKey.trim()) return;
@@ -33,6 +34,8 @@ export default function KeyModal({ user, isOpen, onClose }) {
 
   const copyKey = () => {
     navigator.clipboard.writeText(user.shareableKey?.key || '');
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   const generateNewKey = async () => {
@@ -62,95 +65,116 @@ export default function KeyModal({ user, isOpen, onClose }) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-3 sm:p-4">
-      <div className="bg-white rounded-xl sm:rounded-2xl shadow-xl max-w-md w-full p-4 sm:p-6 max-h-[90vh] overflow-y-auto">
-        <div className="flex justify-between items-center mb-3 sm:mb-4">
-          <h2 className="text-base sm:text-lg font-semibold text-[#463F3A]">Profile & Keys</h2>
+    <div className="fixed inset-0 bg-black/80 bg-opacity-50 z-50 flex items-center justify-center p-3 sm:p-4">
+      <div className="bg-surface rounded-xl sm:rounded-2xl shadow-xl max-w-md w-full p-4 sm:p-6 max-h-[90vh] overflow-y-auto">
+        <div className="flex justify-between items-center mb-4 sm:mb-6">
+          <div className="flex items-center gap-2">
+            <Key className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
+            <h2 className="text-lg sm:text-xl font-bold text-primary">Profile & Keys</h2>
+          </div>
           <button
             onClick={onClose}
-            className="text-[#8A817C] hover:text-[#463F3A] text-lg sm:text-xl p-1"
+            className="p-1.5 sm:p-2 hover:bg-accent rounded-full transition-colors"
           >
-            ×
+            <X className="w-4 h-4 sm:w-5 sm:h-5 text-text-secondary" />
           </button>
         </div>
         
         {/* User Info */}
-        <div className="mb-3 sm:mb-4 pb-2 sm:pb-3 border-b border-[#F4F3EE]">
-          <p className="text-xs sm:text-sm font-medium text-[#463F3A] truncate">{user.username}</p>
-          <p className="text-xs text-[#8A817C] truncate">{user.email}</p>
+        <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-accent rounded-lg sm:rounded-xl border border-border">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-primary rounded-full flex items-center justify-center">
+              <User className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm sm:text-base font-semibold text-primary truncate">{user.username}</p>
+              <p className="text-xs sm:text-sm text-text-secondary truncate">{user.email}</p>
+            </div>
+          </div>
         </div>
 
         {/* Shareable Key Section */}
-        <div className="mb-3 sm:mb-4">
-          <div className="flex items-center justify-between mb-2 sm:mb-3">
-            <p className="text-xs sm:text-sm font-medium text-[#463F3A]">Your Shareable Key</p>
+        <div className="mb-4 sm:mb-6">
+          <div className="flex items-center justify-between mb-3 sm:mb-4">
+            <h3 className="text-base sm:text-lg font-semibold text-primary">Your Shareable Key</h3>
             {checkKeyExpiry() && (
-              <div className="flex items-center gap-1 text-xs text-red-500">
-                <Clock className="w-3 h-3 flex-shrink-0" />
-                <span className="hidden sm:inline">Expired</span>
+              <div className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1 bg-red-50 text-red-500 rounded-full">
+                <Clock className="w-3 h-3 sm:w-4 sm:h-4" />
+                <span className="text-xs sm:text-sm font-medium">Expired</span>
               </div>
             )}
           </div>
           
-          <div className="mb-2 sm:mb-3">
-            <input
-              type="text"
-              value={user.shareableKey?.key || 'No key generated'}
-              readOnly
-              className={`w-full text-xs sm:text-sm p-2 sm:p-3 border rounded-lg sm:rounded-xl font-mono text-center tracking-wider ${
-                checkKeyExpiry() 
-                  ? 'border-red-200 bg-red-50 text-red-400' 
-                  : 'border-[#BCB8B1] bg-[#F4F3EE] text-[#463F3A]'
-              }`}
-            />
+          <div className="mb-3 sm:mb-4">
+            <div className={`relative p-3 sm:p-4 rounded-lg sm:rounded-xl border-2 ${
+              checkKeyExpiry() 
+                ? 'border-red-200 bg-red-50' 
+                : 'border-border bg-bg'
+            }`}>
+              <input
+                type="text"
+                value={user.shareableKey?.key || 'No key generated'}
+                readOnly
+                className={`w-full text-sm sm:text-lg font-mono text-center tracking-[0.2em] sm:tracking-[0.3em] bg-transparent border-none outline-none ${
+                  checkKeyExpiry() 
+                    ? 'text-red-500' 
+                    : 'text-primary'
+                }`}
+              />
+            </div>
           </div>
           
-          <div className="grid grid-cols-2 gap-1 sm:gap-2">
+          <div className="grid grid-cols-2 gap-2 sm:gap-3">
             <button
               onClick={copyKey}
               disabled={!user.shareableKey?.key || checkKeyExpiry()}
-              className="py-2 px-2 sm:px-3 bg-[#463F3A] text-white text-xs sm:text-sm rounded-lg sm:rounded-xl hover:bg-[#8A817C] transition-colors flex items-center justify-center gap-1 sm:gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="py-2 sm:py-3 px-3 sm:px-4 bg-primary hover:bg-primary-light disabled:opacity-50 text-white rounded-lg sm:rounded-xl transition-all duration-200 flex items-center justify-center gap-1 sm:gap-2 disabled:cursor-not-allowed text-sm sm:text-base font-medium"
             >
-              <Copy className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
-              <span className="hidden sm:inline">Copy Key</span>
-              <span className="sm:hidden">Copy</span>
+              <Copy className="w-3 h-3 sm:w-4 sm:h-4" />
+              <span className="hidden sm:inline">{copied ? 'Copied!' : 'Copy Key'}</span>
+              <span className="sm:hidden">{copied ? 'Copied!' : 'Copy'}</span>
             </button>
             <button
               onClick={generateNewKey}
-              className="py-2 px-2 sm:px-3 bg-[#E0AFA0] text-[#463F3A] text-xs sm:text-sm rounded-lg sm:rounded-xl hover:bg-[#BCB8B1] transition-colors flex items-center justify-center gap-1 sm:gap-2"
+              className="py-2 sm:py-3 px-3 sm:px-4 bg-accent hover:bg-primary-lighter text-primary rounded-lg sm:rounded-xl transition-all duration-200 flex items-center justify-center gap-1 sm:gap-2 text-sm sm:text-base font-medium"
             >
-              <RefreshCw className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
+              <RefreshCw className="w-3 h-3 sm:w-4 sm:h-4" />
               <span className="hidden sm:inline">{user.shareableKey?.key ? 'New Key' : 'Generate'}</span>
               <span className="sm:hidden">{user.shareableKey?.key ? 'New' : 'Gen'}</span>
             </button>
           </div>
           
           {user.shareableKey?.expiresAt && !checkKeyExpiry() && (
-            <p className="text-xs text-[#8A817C] mt-2 text-center">
-              Expires: {new Date(user.shareableKey.expiresAt).toLocaleString()}
-            </p>
+            <div className="mt-3 sm:mt-4 p-2 sm:p-3 bg-accent border border-border rounded-lg">
+              <div className="flex items-center gap-1 sm:gap-2 justify-center">
+                <Clock className="w-3 h-3 sm:w-4 sm:h-4 text-text-secondary" />
+                <p className="text-xs sm:text-sm text-text-secondary font-medium">
+                  Expires: {new Date(user.shareableKey.expiresAt).toLocaleDateString()}
+                </p>
+              </div>
+            </div>
           )}
         </div>
 
         {/* Connect Section */}
-        <div>
-          <p className="text-xs sm:text-sm font-medium text-[#463F3A] mb-2 sm:mb-3">Connect with Someone</p>
-          <div className="flex gap-1 sm:gap-2">
+        <div className="border-t border-border pt-4 sm:pt-6">
+          <h3 className="text-base sm:text-lg font-semibold text-primary mb-3 sm:mb-4">Connect with Someone</h3>
+          <div className="space-y-2 sm:space-y-3">
             <input
               type="text"
               value={inputKey}
               onChange={(e) => setInputKey(e.target.value.toUpperCase())}
-              placeholder="8-digit key"
+              placeholder="Enter 8-digit key"
               maxLength={8}
-              className="flex-1 text-xs sm:text-sm p-2 sm:p-3 border border-[#BCB8B1] rounded-lg sm:rounded-xl focus:outline-none focus:border-[#463F3A] bg-[#F4F3EE] text-[#463F3A] placeholder-[#8A817C] font-mono text-center tracking-wider"
+              className="w-full text-sm sm:text-lg p-3 sm:p-4 border-2 border-border rounded-lg sm:rounded-xl focus:outline-none focus:border-primary bg-bg text-primary placeholder-text-secondary font-mono text-center tracking-[0.15em] sm:tracking-[0.2em] transition-colors"
             />
             <button
               onClick={sendRequest}
               disabled={inputKey.length !== 8}
-              className="py-2 px-3 sm:py-3 sm:px-4 bg-[#E0AFA0] text-[#463F3A] text-xs sm:text-sm rounded-lg sm:rounded-xl hover:bg-[#BCB8B1] transition-colors flex items-center gap-1 sm:gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full py-3 sm:py-4 px-4 sm:px-6 bg-primary hover:bg-primary-light disabled:opacity-50 text-white rounded-lg sm:rounded-xl transition-all duration-200 flex items-center justify-center gap-2 sm:gap-3 disabled:cursor-not-allowed font-semibold text-sm sm:text-lg"
             >
-              <UserPlus className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
-              <span className="hidden sm:inline">Connect</span>
+              <UserPlus className="w-4 h-4 sm:w-5 sm:h-5" />
+              Connect Now
             </button>
           </div>
         </div>

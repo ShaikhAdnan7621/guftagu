@@ -1,5 +1,6 @@
 import Message from '@/models/Message';
 import Chat from '@/models/Chat';
+import User from '@/models/User';
 import jwt from 'jsonwebtoken';
 import connectDB from '@/lib/mongodb';
 
@@ -11,17 +12,25 @@ export async function POST(req) {
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret');
     const { chats = [], actions = [] } = await req.json();
 
+
+    // Update user's last active time
+    await User.findByIdAndUpdate(decoded.userId, {
+      lastActive: new Date()
+    });
+
     // Process actions first (writes)
     const actionResults = await processActions(actions, decoded.userId);
     
     // Get updates for requested chats (reads)
     const updates = await getBatchUpdates(chats, decoded.userId);
     
-    return Response.json({
+    const response = {
       updates,
       actionResults,
       timestamp: Date.now()
-    });
+    };
+    
+    return Response.json(response);
 
   } catch (error) {
     console.error('Batch update error:', error);
@@ -54,9 +63,13 @@ async function getBatchUpdates(chatRequests, userId) {
       }
 
       const messages = await Message.find(query)
-        .populate('sender', 'username')
+        .populate([
+          { path: 'sender', select: 'username' },
+          { path: 'replyTo', select: 'content sender', populate: { path: 'sender', select: 'username' } },
+          { path: 'reactions.users', select: 'username' }
+        ])
         .sort({ createdAt: 1 })
-        .limit(50);
+        .limit(30);
 
       updates[req.chatId] = {
         messages,
@@ -80,23 +93,31 @@ async function getBatchUpdates(chatRequests, userId) {
 async function processActions(actions, userId) {
   const results = {};
   
-  for (const action of actions) {
+  for (let i = 0; i < actions.length; i++) {
+    const action = actions[i];
+    const actionKey = action.id || i;
     try {
       switch (action.type) {
         case 'send':
-          results[action.id] = await createMessage(action, userId);
+          results[actionKey] = await createMessage(action, userId);
+          break;
+        case 'reply':
+          results[actionKey] = await createReply(action, userId);
+          break;
+        case 'react':
+          results[actionKey] = await toggleReaction(action, userId);
           break;
         case 'edit':
-          results[action.id] = await editMessage(action, userId);
+          results[actionKey] = await editMessage(action, userId);
           break;
         case 'delete':
-          results[action.id] = await deleteMessage(action, userId);
+          results[actionKey] = await deleteMessage(action, userId);
           break;
         default:
-          results[action.id] = { error: 'Unknown action type' };
+          results[actionKey] = { error: 'Unknown action type' };
       }
     } catch (error) {
-      results[action.id] = { error: error.message };
+      results[actionKey] = { error: error.message };
     }
   }
   
@@ -104,9 +125,11 @@ async function processActions(actions, userId) {
 }
 
 async function createMessage(action, userId) {
+  
   // Verify user is part of chat
   const chat = await Chat.findById(action.chatId);
   if (!chat || !chat.participants.includes(userId)) {
+    console.log('Unauthorized: User not in chat');
     throw new Error('Unauthorized');
   }
 
@@ -116,6 +139,7 @@ async function createMessage(action, userId) {
     content: action.content
   });
   
+  
   // Update chat activity
   await Chat.findByIdAndUpdate(action.chatId, {
     lastMessage: message._id,
@@ -124,6 +148,77 @@ async function createMessage(action, userId) {
   });
   
   await message.populate('sender', 'username');
+  return { success: true, message };
+}
+
+async function createReply(action, userId) {
+  // Verify user is part of chat
+  const chat = await Chat.findById(action.chatId);
+  if (!chat || !chat.participants.includes(userId)) {
+    throw new Error('Unauthorized');
+  }
+
+  // Verify reply target exists
+  const replyTarget = await Message.findById(action.replyTo);
+  if (!replyTarget || replyTarget.chat.toString() !== action.chatId) {
+    throw new Error('Invalid reply target');
+  }
+
+  const message = await Message.create({
+    chat: action.chatId,
+    sender: userId,
+    content: action.content,
+    replyTo: action.replyTo
+  });
+  
+  // Update chat activity
+  await Chat.findByIdAndUpdate(action.chatId, {
+    lastMessage: message._id,
+    lastActivity: new Date(),
+    $inc: { messageCount: 1 }
+  });
+  
+  await message.populate(['sender', 'replyTo'], 'username content');
+  return { success: true, message };
+}
+
+async function toggleReaction(action, userId) {
+  const message = await Message.findById(action.messageId);
+  if (!message) {
+    throw new Error('Message not found');
+  }
+
+  // Verify user is part of chat
+  const chat = await Chat.findById(message.chat);
+  if (!chat || !chat.participants.includes(userId)) {
+    throw new Error('Unauthorized');
+  }
+
+  const existingReaction = message.reactions.find(r => r.emoji === action.emoji);
+  
+  if (existingReaction) {
+    const userIndex = existingReaction.users.indexOf(userId);
+    if (userIndex > -1) {
+      // Remove user's reaction
+      existingReaction.users.splice(userIndex, 1);
+      if (existingReaction.users.length === 0) {
+        // Remove empty reaction
+        message.reactions = message.reactions.filter(r => r.emoji !== action.emoji);
+      }
+    } else {
+      // Add user's reaction
+      existingReaction.users.push(userId);
+    }
+  } else {
+    // Create new reaction
+    message.reactions.push({
+      emoji: action.emoji,
+      users: [userId]
+    });
+  }
+
+  await message.save();
+  await message.populate('reactions.users', 'username');
   return { success: true, message };
 }
 

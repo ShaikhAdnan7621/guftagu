@@ -1,5 +1,6 @@
 import Chat from '@/models/Chat';
 import Message from '@/models/Message';
+import User from '@/models/User';
 import jwt from 'jsonwebtoken';
 import connectDB from '@/lib/mongodb';
 import mongoose from 'mongoose';
@@ -15,10 +16,15 @@ export async function GET(req) {
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret');
     
+    // Update current user's activity
+    await User.findByIdAndUpdate(decoded.userId, {
+      lastActive: new Date()
+    });
+    
     const chats = await Chat.find({
       participants: new mongoose.Types.ObjectId(decoded.userId)
     })
-    .populate('participants', 'username email')
+    .populate('participants', 'username email lastActive')
     .sort({ lastActivity: -1 });
     
     return Response.json({ chats });

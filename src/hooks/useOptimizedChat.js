@@ -9,6 +9,8 @@ export function useOptimizedChat() {
   const [requests, setRequests] = useState([]);
   const [activeChat, setActiveChat] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [hasMoreMessages, setHasMoreMessages] = useState(true);
+  const [loadingOlder, setLoadingOlder] = useState(false);
 
   // Initial data fetch
   useEffect(() => {
@@ -37,7 +39,23 @@ export function useOptimizedChat() {
         headers: { Authorization: `Bearer ${token}` }
       });
       const data = await response.json();
-      setChats(data.chats || []);
+      const chatList = data.chats || [];
+      setChats(chatList);
+      
+      // Auto-select first chat if no active chat and chats exist
+      if (!activeChat && chatList.length > 0) {
+        const firstChat = chatList[0];
+        setActiveChat(firstChat);
+        activityTracker.setActiveChat(firstChat._id);
+        
+        // Load messages for first chat
+        const messagesResponse = await fetch(`/api/chat/messages/${firstChat._id}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const messagesData = await messagesResponse.json();
+        setMessages(messagesData.messages || []);
+        setHasMoreMessages(messagesData.hasMore || false);
+      }
     } catch (error) {
       console.error('Error fetching chats:', error);
     }
@@ -97,7 +115,9 @@ export function useOptimizedChat() {
             const currentMessages = Array.isArray(prev) ? prev : [];
             const existingIds = new Set(currentMessages.map(m => m._id));
             const newMessages = update.messages.filter(m => !existingIds.has(m._id));
-            return [...currentMessages, ...newMessages];
+            // Combine and sort by createdAt to maintain chronological order
+            const allMessages = [...currentMessages, ...newMessages];
+            return allMessages.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
           });
         }
         syncManager.markSynced(activeChat._id, update.lastSync);
@@ -108,7 +128,7 @@ export function useOptimizedChat() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [activeChat]);
 
   // Setup polling for active chats only
   useEffect(() => {
@@ -139,18 +159,119 @@ export function useOptimizedChat() {
       });
 
       if (response.ok) {
-        // Reload messages after sending
-        const messagesResponse = await fetch(`/api/chat/messages/${activeChat._id}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        const messagesData = await messagesResponse.json();
-        setMessages(messagesData.messages || []);
+        const data = await response.json();
+        console.log('Frontend received:', data);
+        const actionResult = data.actionResults[0];
+        console.log('Action result:', actionResult);
+        
+        if (actionResult?.success) {
+          console.log('Adding message to state:', actionResult.message);
+          setMessages(prev => {
+            const currentMessages = Array.isArray(prev) ? prev : [];
+            const existingIds = new Set(currentMessages.map(m => m._id));
+            if (!existingIds.has(actionResult.message._id)) {
+              const newMessages = [...currentMessages, actionResult.message];
+              // Sort by createdAt to maintain chronological order
+              const sortedMessages = newMessages.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+              console.log('New messages state:', sortedMessages);
+              return sortedMessages;
+            }
+            return currentMessages;
+          });
+        }
         fetchChats();
       }
     } catch (error) {
       console.error('Send message error:', error);
     }
   }, [activeChat, user, fetchChats]);
+
+  // Reply to message
+  const replyMessage = useCallback(async (content, replyToId) => {
+    if (!activeChat || !content.trim() || !user) return;
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/chat/batch-updates', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          chats: [],
+          actions: [{
+            type: 'reply',
+            chatId: activeChat._id,
+            content,
+            replyTo: replyToId
+          }]
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const actionResult = data.actionResults[0];
+        
+        if (actionResult?.success) {
+          setMessages(prev => {
+            const currentMessages = Array.isArray(prev) ? prev : [];
+            const existingIds = new Set(currentMessages.map(m => m._id));
+            if (!existingIds.has(actionResult.message._id)) {
+              const newMessages = [...currentMessages, actionResult.message];
+              return newMessages.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+            }
+            return currentMessages;
+          });
+        }
+        fetchChats();
+      }
+    } catch (error) {
+      console.error('Reply message error:', error);
+    }
+  }, [activeChat, user, fetchChats]);
+
+  // React to message
+  const reactMessage = useCallback(async (messageId, emoji) => {
+    if (!activeChat || !user) return;
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/chat/batch-updates', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          chats: [],
+          actions: [{
+            type: 'react',
+            messageId,
+            emoji
+          }]
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const actionResult = Object.values(data.actionResults)[0];
+        
+        if (actionResult?.success) {
+          setMessages(prev => 
+            prev.map(msg => 
+              msg._id === messageId ? {
+                ...msg,
+                reactions: actionResult.message.reactions
+              } : msg
+            )
+          );
+        }
+      }
+    } catch (error) {
+      console.error('React message error:', error);
+    }
+  }, [activeChat, user]);
 
   const selectChat = useCallback((chat) => {
     setActiveChat(chat);
@@ -165,6 +286,7 @@ export function useOptimizedChat() {
         });
         const data = await response.json();
         setMessages(data.messages || []);
+        setHasMoreMessages(data.hasMore || false);
       } catch (error) {
         console.error('Error loading messages:', error);
         setMessages([]);
@@ -195,6 +317,35 @@ export function useOptimizedChat() {
     }
   };
 
+  const loadOlderMessages = useCallback(async () => {
+    if (!activeChat || loadingOlder || !hasMoreMessages) return;
+
+    try {
+      setLoadingOlder(true);
+      const token = localStorage.getItem('token');
+      const offset = messages.length;
+      
+      const response = await fetch(`/api/chat/messages/${activeChat._id}?offset=${offset}&limit=30`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.messages.length > 0) {
+          setMessages(prev => {
+            const combined = [...data.messages, ...prev];
+            return combined.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+          });
+        }
+        setHasMoreMessages(data.hasMore || false);
+      }
+    } catch (error) {
+      console.error('Error loading older messages:', error);
+    } finally {
+      setLoadingOlder(false);
+    }
+  }, [activeChat, messages.length, loadingOlder, hasMoreMessages]);
+
   const logout = () => {
     localStorage.removeItem('token');
     document.cookie = 'token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT';
@@ -208,9 +359,14 @@ export function useOptimizedChat() {
     requests,
     activeChat,
     isLoading,
+    hasMoreMessages,
+    loadingOlder,
     sendMessage,
+    replyMessage,
+    reactMessage,
     selectChat,
     acceptRequest,
+    loadOlderMessages,
     logout
   };
 }

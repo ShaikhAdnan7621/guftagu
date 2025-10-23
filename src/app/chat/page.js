@@ -17,9 +17,14 @@ export default function Chat() {
     requests,
     activeChat,
     isLoading,
+    hasMoreMessages,
+    loadingOlder,
     sendMessage,
+    replyMessage,
+    reactMessage,
     selectChat,
     acceptRequest,
+    loadOlderMessages,
     logout
   } = useOptimizedChat();
   
@@ -37,7 +42,7 @@ export default function Chat() {
   }
 
   return (
-    <div className="h-screen flex bg-[#BCB8B1] relative overflow-hidden">
+    <div className="h-dvh flex bg-[#BCB8B1] relative overflow-hidden">
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div 
@@ -63,8 +68,15 @@ export default function Chat() {
         activeChat={activeChat}
         messages={messages}
         user={user}
+        chats={chats}
         onSendMessage={sendMessage}
+        onReplyMessage={replyMessage}
+        onReactMessage={reactMessage}
+        onChatSelect={selectChat}
         isLoading={isLoading}
+        hasMoreMessages={hasMoreMessages}
+        loadingOlder={loadingOlder}
+        onLoadOlderMessages={loadOlderMessages}
         onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
       />
       

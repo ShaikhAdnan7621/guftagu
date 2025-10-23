@@ -12,7 +12,13 @@ export async function GET(req) {
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret');
-    const user = await User.findById(decoded.userId).select('-password');
+    
+    // Update user activity
+    const user = await User.findByIdAndUpdate(
+      decoded.userId,
+      { lastActive: new Date() },
+      { new: true }
+    ).select('-password');
     
     if (!user) {
       return Response.json({ message: 'User not found' }, { status: 404 });
