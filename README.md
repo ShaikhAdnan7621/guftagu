@@ -1,36 +1,80 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+
+# GuftaGu - Real-Time Chat App
+
+GuftaGu is a modern, secure, real-time chat application built with Next.js, React, MongoDB, and TailwindCSS. Connect instantly with friends using unique shareable keys, chat in real-time, and enjoy a beautiful, responsive UI.
+
+## Features
+
+- **Authentication:** Sign up, log in (password or passkey), and recover forgotten passkeys.
+- **User Profiles:** Each user has a profile and a unique shareable key for connecting.
+- **Chat Requests:** Connect with others by sharing and entering 8-digit keys. Accept or reject requests.
+- **Real-Time Chat:** Send, reply, edit, delete, and react to messages. Live updates and syncing.
+- **Activity Tracking:** See online status and last seen for users.
+- **Modern UI:** Responsive design with sidebar, chat area, and profile modal. Styled with TailwindCSS.
+- **Secure Backend:** JWT authentication for all API routes. Data stored in MongoDB.
+
+## Project Structure
+
+- `src/app`: Next.js app directory (pages, layouts, API routes)
+- `src/components`: Reusable React components (Chat, Sidebar, KeyModal, etc.)
+- `src/hooks`: Custom React hooks (e.g., useOptimizedChat)
+- `src/models`: Mongoose models for User, Chat, Message, ChatRequest
+- `src/utils`: Utility functions for activity tracking, syncing, etc.
+- `src/lib`: MongoDB connection logic
+- `public`: Static assets
 
 ## Getting Started
 
-First, run the development server:
+1. **Install dependencies:**
+	```bash
+	npm install
+	# or
+	yarn install
+	```
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+2. **Set up environment variables:**
+	- Create a `.env.local` file in the root directory.
+	- Add your MongoDB connection string and JWT secret:
+	  ```env
+	  MONGODB_URL=your_mongodb_connection_string
+	  JWT_SECRET=your_jwt_secret
+	  ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+3. **Run the development server:**
+	```bash
+	npm run dev
+	# or
+	yarn dev
+	```
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+4. **Open the app:**
+	Visit [http://localhost:3000](http://localhost:3000) in your browser.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Usage
 
-## Learn More
+1. **Sign Up:** Create an account and save your PassKey for login.
+2. **Login:** Use your password or PassKey to log in.
+3. **Profile & Key:** Generate/share your 8-digit key to connect with others.
+4. **Chat Requests:** Enter a friend's key to send a chat request. Accept or reject incoming requests.
+5. **Chat:** Start messaging, reply, edit, delete, and react to messages in real-time.
 
-To learn more about Next.js, take a look at the following resources:
+## Future Improvements
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- Group chats
+- File/image sharing
+- Notifications
+- Message search
+- Admin panel
+- Mobile app
+- End-to-end encryption
+- Themes/dark mode
+- Profile avatars
+- Read receipts
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## License
 
-## Deploy on Vercel
+This project is open-source and available under the MIT License.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+---
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Made with ❤️ using Next.js, React, MongoDB, and TailwindCSS.

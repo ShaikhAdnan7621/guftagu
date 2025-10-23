@@ -21,6 +21,8 @@ export async function GET(req, { params }) {
       return Response.json({ message: 'Unauthorized' }, { status: 403 });
     }
     
+    // Don't auto-mark messages as seen - let client control this
+    
     const messages = await Message.find({ chat: chatId })
       .populate([
         { path: 'sender', select: 'username' },
@@ -38,23 +40,6 @@ export async function GET(req, { params }) {
     const hasMore = offset + limit < totalMessages;
     
     console.log('Found messages:', messages.length, 'hasMore:', hasMore);
-    
-    // Mark messages as read
-    await Message.updateMany(
-      { 
-        chat: chatId, 
-        sender: { $ne: decoded.userId },
-        'readBy.user': { $ne: decoded.userId }
-      },
-      { 
-        $push: { 
-          readBy: { 
-            user: decoded.userId, 
-            readAt: new Date() 
-          } 
-        } 
-      }
-    );
     
     return Response.json({ messages, hasMore });
   } catch (error) {

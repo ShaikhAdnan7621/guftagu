@@ -61,12 +61,15 @@ async function getBatchUpdates(chatRequests, userId) {
       if (req.lastMessageId) {
         query._id = { $gt: req.lastMessageId };
       }
+	  
+      // Don't auto-mark messages as seen - let client control this
 
       const messages = await Message.find(query)
         .populate([
           { path: 'sender', select: 'username' },
           { path: 'replyTo', select: 'content sender', populate: { path: 'sender', select: 'username' } },
-          { path: 'reactions.users', select: 'username' }
+          { path: 'reactions.users', select: 'username' },
+          // removed readBy population - status/seen removed
         ])
         .sort({ createdAt: 1 })
         .limit(30);
@@ -112,6 +115,12 @@ async function processActions(actions, userId) {
           break;
         case 'delete':
           results[actionKey] = await deleteMessage(action, userId);
+          break;
+        case 'markRead':
+          results[actionKey] = await markMessageRead(action, userId);
+          break;
+        case 'batchMarkSeen':
+          results[actionKey] = await batchMarkMessagesSeen(action, userId);
           break;
         default:
           results[actionKey] = { error: 'Unknown action type' };
@@ -243,4 +252,37 @@ async function deleteMessage(action, userId) {
 
   await Message.findByIdAndDelete(action.messageId);
   return { success: true, messageId: action.messageId };
+}
+
+async function markMessageRead(action, userId) {
+  const message = await Message.findById(action.messageId);
+  if (!message) {
+    throw new Error('Message not found');
+  }
+
+  // Verify user is part of chat
+  const chat = await Chat.findById(message.chat);
+  if (!chat || !chat.participants.includes(userId)) {
+    throw new Error('Unauthorized');
+  }
+
+  // Status/read tracking removed, no-op
+  return { success: true, message };
+}
+
+async function batchMarkMessagesSeen(action, userId) {
+  const { messageIds, chatId } = action;
+  
+  // Verify user is part of chat
+  const chat = await Chat.findById(chatId);
+  if (!chat || !chat.participants.includes(userId)) {
+    throw new Error('Unauthorized');
+  }
+
+  // Status/read tracking removed, do not change messages
+  return {
+    success: true,
+    updatedCount: 0,
+    messageIds
+  };
 }

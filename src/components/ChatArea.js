@@ -5,9 +5,10 @@ import MessagesList from './chat/MessagesList';
 import MessageInput from './chat/MessageInput';
 import MessageActionPanel from './chat/MessageActionPanel';
 
-export default function ChatArea({ activeChat, messages, user, onSendMessage, onReplyMessage, onReactMessage, isLoading, onToggleSidebar, chats, onChatSelect, hasMoreMessages, loadingOlder, onLoadOlderMessages }) {
+export default function ChatArea({ activeChat, messages, user, onSendMessage, onReplyMessage, onReactMessage, onEditMessage, onDeleteMessage, isLoading, onToggleSidebar, chats, onChatSelect, hasMoreMessages, loadingOlder, onLoadOlderMessages }) {
 	const [newMessage, setNewMessage] = useState('');
 	const [replyTo, setReplyTo] = useState(null);
+	const [editingMessage, setEditingMessage] = useState(null);
 	const [selectedMessage, setSelectedMessage] = useState(null);
 	const messagesEndRef = useRef(null);
 
@@ -18,16 +19,23 @@ export default function ChatArea({ activeChat, messages, user, onSendMessage, on
 		});
 	};
 
+
+
 	useEffect(() => {
 		if (messages.length > 0) {
 			setTimeout(scrollToBottom, 100);
 		}
-	}, [messages]);
+	}, [messages.length]);
+
+
 
 	const handleSend = () => {
 		if (!newMessage.trim()) return;
 
-		if (replyTo) {
+		if (editingMessage) {
+			onEditMessage(editingMessage._id, newMessage);
+			setEditingMessage(null);
+		} else if (replyTo) {
 			onReplyMessage(newMessage, replyTo._id);
 			setReplyTo(null);
 		} else {
@@ -62,15 +70,22 @@ export default function ChatArea({ activeChat, messages, user, onSendMessage, on
 	};
 
 	const handleEdit = (message) => {
-		// TODO: Implement edit functionality
-		console.log('Edit message:', message);
+		setEditingMessage(message);
+		setNewMessage(message.content);
 		setSelectedMessage(null);
+		setReplyTo(null);
 	};
 
 	const handleDelete = (message) => {
-		// TODO: Implement delete functionality
-		console.log('Delete message:', message);
+		if (window.confirm('Are you sure you want to delete this message?')) {
+			onDeleteMessage(message._id);
+		}
 		setSelectedMessage(null);
+	};
+
+	const handleCancelEdit = () => {
+		setEditingMessage(null);
+		setNewMessage('');
 	};
 
 	if (!activeChat) {
@@ -124,6 +139,7 @@ export default function ChatArea({ activeChat, messages, user, onSendMessage, on
 				hasMoreMessages={hasMoreMessages}
 				loadingOlder={loadingOlder}
 				onLoadOlderMessages={onLoadOlderMessages}
+                
 			/>
 
 			{selectedMessage && (
@@ -143,7 +159,9 @@ export default function ChatArea({ activeChat, messages, user, onSendMessage, on
 				onChange={(e) => setNewMessage(e.target.value)}
 				onSend={handleSend}
 				replyTo={replyTo}
+				editingMessage={editingMessage}
 				onCancelReply={handleCancelReply}
+				onCancelEdit={handleCancelEdit}
 				isLoading={isLoading}
 			/>
 		</div>

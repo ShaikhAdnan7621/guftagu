@@ -1,13 +1,13 @@
 import { Reply, Edit, Trash2, Copy, MoreHorizontal, X } from 'lucide-react';
 
-export default function MessageActionPanel({ 
-	selectedMessage, 
-	isOwn, 
-	onReply, 
-	onReact, 
-	onEdit, 
-	onDelete, 
-	onClose 
+export default function MessageActionPanel({
+	selectedMessage,
+	isOwn,
+	onReply,
+	onReact,
+	onEdit,
+	onDelete,
+	onClose
 }) {
 	const reactions = ['❤️', '👍', '😂', '😮', '😢', '👎', '🔥', '🎉'];
 
@@ -19,94 +19,100 @@ export default function MessageActionPanel({
 	};
 
 	return (
-		<div className="bg-surface border-t border-border p-3">
+		<div className="bg-surface border-t border-border/20 px-2 py-2.5 shadow-sm backdrop-blur-sm">
 			{/* Selected Message Preview */}
-			<div className="flex items-start gap-3 mb-3">
+			<div className="flex items-start gap-2 mb-2.5">
 				<div className="flex-1 min-w-0">
-					<div className="flex items-center gap-2 mb-1">
-						<span className="text-sm font-medium text-primary">
-							{selectedMessage.sender?.username || 'Unknown'}
-						</span>
-						<span className="text-xs text-text-secondary">
-							{new Date(selectedMessage.createdAt).toLocaleTimeString([], { 
-								hour: '2-digit', 
-								minute: '2-digit' 
-							})}
-						</span>
+					<div className="flex items-center gap-1.5 mb-1.5">
+						<div className="h-6 w-6 bg-primary/10 rounded-lg flex items-center justify-center">
+							<span className="text-xs font-medium text-primary">
+								{(selectedMessage.sender?.username || 'U').charAt(0).toUpperCase()}
+							</span>
+						</div>
+						<div className="flex items-baseline gap-1.5">
+							<span className="text-xs font-medium text-primary">
+								{selectedMessage.sender?.username || 'Unknown'}
+							</span>
+							<span className="text-[10px] text-text-secondary/75">
+								{new Date(selectedMessage.createdAt).toLocaleTimeString([], {
+									hour: '2-digit',
+									minute: '2-digit'
+								})}
+							</span>
+						</div>
 					</div>
-					<p className="text-sm text-primary bg-bg p-2 rounded-lg truncate">
+					<p className="text-xs text-primary/90 bg-bg/50 px-2.5 py-2 rounded-lg">
 						{selectedMessage.content}
 					</p>
 				</div>
 				<button
 					onClick={onClose}
-					className="p-1 hover:bg-bg rounded-full transition-colors"
+					className="p-1.5 hover:bg-bg/50 rounded-lg transition-all duration-200"
 				>
-					<X className="w-4 h-4 text-text-secondary" />
+					<X className="w-3.5 h-3.5 text-text-secondary/75 hover:text-primary/90" />
 				</button>
 			</div>
 
-			{/* Quick Reactions */}
-			<div className="flex items-center gap-2 mb-3 overflow-x-auto">
-				{reactions.map(emoji => (
+			{/* Quick Reactions & Actions */}
+			<div className="flex items-center justify-between gap-1.5 px-0.5">
+				<div className="flex items-center gap-0.5 overflow-x-auto scrollbar-none">
+					{reactions.map(emoji => (
+						<button
+							key={emoji}
+							onClick={() => {
+								onReact(selectedMessage._id, emoji);
+								onClose();
+							}}
+							className="flex-shrink-0 p-1.5 hover:bg-bg/50 rounded-lg text-sm transition-all duration-200 hover:scale-110"
+						>
+							{emoji}
+						</button>
+					))}
+				</div>
+
+				<div className="flex items-center gap-1">
 					<button
-						key={emoji}
 						onClick={() => {
-							onReact(selectedMessage._id, emoji);
+							onReply(selectedMessage);
 							onClose();
 						}}
-						className="flex-shrink-0 p-2 hover:bg-bg rounded-full text-lg transition-all hover:scale-110"
+						className="p-1.5 bg-primary/10 hover:bg-primary/20 text-primary rounded-lg transition-all duration-200"
 					>
-						{emoji}
+						<Reply className="w-3.5 h-3.5" />
 					</button>
-				))}
-			</div>
 
-			{/* Action Buttons */}
-			<div className="flex items-center gap-2">
-				<button
-					onClick={() => {
-						onReply(selectedMessage);
-						onClose();
-					}}
-					className="flex items-center gap-2 px-3 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
-				>
-					<Reply className="w-4 h-4" />
-					Reply
-				</button>
+					{isOwn && (
+						<>
+							<button
+								onClick={() => {
+									onEdit(selectedMessage);
+									onClose();
+								}}
+								className="p-1.5 bg-bg/50 hover:bg-bg text-primary/75 hover:text-primary rounded-lg transition-all duration-200"
+							>
+								<Edit className="w-3.5 h-3.5" />
+							</button>
+							<button
+								onClick={() => {
+									if (window.confirm('Delete this message?')) {
+										onDelete(selectedMessage);
+										onClose();
+									}
+								}}
+								className="p-1.5 bg-red-50/50 hover:bg-red-50 text-red-500/75 hover:text-red-500 rounded-lg transition-all duration-200"
+							>
+								<Trash2 className="w-3.5 h-3.5" />
+							</button>
+						</>
+					)}
 
-				{isOwn && (
-					<>
-						<button
-							onClick={() => {
-								onEdit(selectedMessage);
-								onClose();
-							}}
-							className="flex items-center gap-2 px-3 py-2 bg-bg text-primary rounded-lg hover:bg-border transition-colors"
-						>
-							<Edit className="w-4 h-4" />
-							Edit
-						</button>
-						<button
-							onClick={() => {
-								onDelete(selectedMessage);
-								onClose();
-							}}
-							className="flex items-center gap-2 px-3 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors"
-						>
-							<Trash2 className="w-4 h-4" />
-							Delete
-						</button>
-					</>
-				)}
-
-				<button
-					onClick={handleCopy}
-					className="flex items-center gap-2 px-3 py-2 bg-bg text-primary rounded-lg hover:bg-border transition-colors"
-				>
-					<Copy className="w-4 h-4" />
-					Copy
-				</button>
+					<button
+						onClick={handleCopy}
+						className="p-1.5 bg-bg/50 hover:bg-bg text-primary/75 hover:text-primary rounded-lg transition-all duration-200"
+					>
+						<Copy className="w-3.5 h-3.5" />
+					</button>
+				</div>
 			</div>
 		</div>
 	);
